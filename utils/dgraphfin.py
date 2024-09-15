@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
+import torch_geometric.transforms as T
+from torch_sparse import coalesce
 
 
 def read_dgraphfin(folder):
@@ -90,3 +92,31 @@ class DGraphFin(InMemoryDataset):
 
     def __repr__(self) -> str:
         return f'{self.name}()'
+
+
+def load_data(folder, dataset_name, force_to_symmetric: bool = True):
+    dataset = DGraphFin(root=folder, name=dataset_name, transform=T.ToSparseTensor())
+
+    nlabels = dataset.num_classes
+    if dataset_name in ['DGraph']:
+        nlabels = 2  # 本实验中仅需预测类0和类1
+
+    data = dataset[0]
+    if force_to_symmetric:
+        data.adj_t = data.adj_t.to_symmetric()  # 将有向图转化为无向图
+
+    if data.edge_index is None:
+        row, col, _ = data.adj_t.t().coo()
+        data.edge_index = torch.stack([row, col], dim=0)
+
+    if dataset_name in ['DGraph']:
+        x = data.x
+        x = (x - x.mean(0)) / x.std(0)
+        data.x = x
+    if data.y.dim() == 2:
+        data.y = data.y.squeeze(1)
+
+    split_idx = {'train': data.train_mask, 'valid': data.valid_mask, 'test': data.test_mask}  # 划分训练集，验证集
+
+    train_idx = split_idx['train']
+    return data
