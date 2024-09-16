@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from models.GCN import Model
+from models.GATCN import Model
 from utils.dgraphfin import load_data, AdjacentNodesDataset
 from utils.evaluator import Evaluator
 
@@ -22,17 +22,17 @@ data = data.to(device)
 
 model_params = {
     "h_c": 16,
-    "n_layers": 2,
+    "heads": 2,
     "dropout": 0.1,
-    "normalize": True,
 }
+
 
 model = Model(
     in_c=20,
     out_c=2,
     ** model_params
 ).to(device)
-model_desc = f'GCN-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
+model_desc = f'GATCN-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
 model_save_path = f'results/model-{model_desc}.pt'
 model.load_state_dict(torch.load(model_save_path, map_location=device))
 
