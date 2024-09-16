@@ -3,6 +3,9 @@ import os.path as osp
 
 import numpy as np
 import torch
+from torch import Tensor
+from torch.utils.data import Dataset
+import torch.nn.functional as F
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
 import torch_geometric.transforms as T
@@ -120,3 +123,50 @@ def load_data(folder, dataset_name, force_to_symmetric: bool = True):
 
     train_idx = split_idx['train']
     return data
+
+
+class AdjacentNodesDataset(Dataset):
+    def __init__(self, data, indexs, num_nodes):
+        super(AdjacentNodesDataset, self).__init__()
+        self.data = data
+        self.indexs = indexs
+        self.num_nodes = num_nodes
+
+    def __len__(self):
+        return len(self.indexs)
+
+    def __getitem__(self, idx):
+        index: Tensor = self.indexs[idx]
+        x: Tensor = self.data.x[index].unsqueeze(0)
+        y: Tensor = self.data.y[index]
+
+        # 从 adj_t 中获取 idx 节点的邻居节点
+        _, neighbors, distances = self.data.adj_t[index.item()].coo()  # 提取行对应的邻居节点索引
+
+        if distances is not None:
+            neighbors = {i.item(): j.item() for i, j in zip(neighbors, distances)}
+            neighbors = sorted(neighbors.items(), key=lambda x: x[1])
+            distances = Tensor([i[1] for i in neighbors])
+            neighbors = Tensor([i[0] for i in neighbors])
+        else:
+            distances = torch.ones(len(neighbors))
+        neighbors = self.data.x[neighbors]
+        n_neighbors = len(neighbors)
+        if len(neighbors) < self.num_nodes - 1:
+            n_pad = self.num_nodes - 1 - len(neighbors)
+            neighbors = F.pad(neighbors, (0, 0, 0, n_pad), value=0.0)
+            distances = F.pad(distances, (0, n_pad), value=0.0) if distances is not None else None
+        else:
+            neighbors = neighbors[:self.num_nodes - 1]
+            distances = distances[:self.num_nodes - 1] if distances is not None else None
+        return torch.cat([x, neighbors], dim=0), F.pad(distances, (1, 0), value=0.0), y, n_neighbors
+
+    @staticmethod
+    def collate_fn(batch):
+        xs, distances, ys, n_neighbors_list = zip(*batch)
+
+        xs = torch.stack(xs)
+        distances = torch.stack(distances)
+        ys = torch.stack(ys)
+        n_neighbors_list = torch.tensor(n_neighbors_list)
+        return xs, distances, ys, n_neighbors_list
