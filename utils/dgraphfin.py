@@ -128,6 +128,8 @@ def load_data(folder, dataset_name, force_to_symmetric: bool = True):
 def get_adj_nodes(data, idx: int, num_nodes: int):
     if isinstance(idx, int):
         idx = Tensor([idx]).long()
+    if idx.dim() == 0:
+        idx = idx.unsqueeze(0)
     x: Tensor = data.x[idx]
     y: Tensor = data.y[idx]
 
@@ -150,7 +152,12 @@ def get_adj_nodes(data, idx: int, num_nodes: int):
     else:
         neighbors = neighbors[:num_nodes - 1]
         distances = distances[:num_nodes - 1] if distances is not None else None
-    return torch.cat([x, neighbors], dim=0), F.pad(distances, (1, 0), value=0.0), y, n_neighbors
+    return (
+        torch.cat([x, neighbors], dim=0),  # (num_nodes, feature_dim) 邻居节点和 idx 节点的特征拼接
+        F.pad(distances, (1, 0), value=0.0),  # (num_nodes, ) 距离信息拼接
+        y.squeeze(-1),  # scaler 标签
+        n_neighbors  # 邻居节点数
+    )
 
 
 class AdjacentNodesDataset(Dataset):
