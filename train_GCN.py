@@ -46,14 +46,17 @@ def valid(model, data, split_idx, evaluator, cache_path):
     return eval_results, losses
 
 
-def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, model_desc, stop_count):
+def train_epoch(
+    model, data, optimizer, evaluator, lr, min_valid_loss, epoch, model_desc, stop_count,
+    use_early_stop=False,
+    use_lr_scheduler=False
+):
     split_idx = {'train': data.train_mask, 'valid': data.valid_mask, 'test': data.test_mask}  # 划分训练集，验证集
     cache_path = Path(f'./results/out-{model_desc}.pt')
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     loss = train(model, data, data.train_mask, optimizer, cache_path)
     eval_results, losses = valid(model, data, split_idx, evaluator, cache_path)
     valid_loss = losses['valid']
-
     early_stop = False
     # 保存最好的模型
     if valid_loss < min_valid_loss:
@@ -64,11 +67,11 @@ def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, mo
         min_valid_loss = valid_loss
     else:
         stop_count += 1
-        if stop_count == 5:
+        if stop_count == 5 and use_lr_scheduler:
             for param_group in optimizer.param_groups:
                 lr *= 0.5
                 param_group['lr'] = 0.5
-        if stop_count == 10:
+        if stop_count == 10 and use_early_stop:
             early_stop = True
 
     train_log = {

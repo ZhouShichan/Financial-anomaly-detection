@@ -46,7 +46,11 @@ def valid(model, data, split_idx, evaluator, cache_path):
     return eval_results, losses
 
 
-def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, model_desc, stop_count):
+def train_epoch(
+    model, data, optimizer, evaluator, lr, min_valid_loss, epoch, model_desc, stop_count,
+    use_early_stop=False,
+    use_lr_scheduler=False
+):
     split_idx = {'train': data.train_mask, 'valid': data.valid_mask, 'test': data.test_mask}  # 划分训练集，验证集
     cache_path = Path(f'./results/out-{model_desc}.pt')
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,11 +67,11 @@ def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, mo
         min_valid_loss = valid_loss
     else:
         stop_count += 1
-        if stop_count == 5:
+        if stop_count == 5 and use_lr_scheduler:
             for param_group in optimizer.param_groups:
                 lr *= 0.5
                 param_group['lr'] = 0.5
-        if stop_count == 10:
+        if stop_count == 10 and use_early_stop:
             early_stop = True
 
     train_log = {
@@ -96,13 +100,13 @@ if __name__ == '__main__':
     data = load_data('./datasets/632d74d4e2843a53167ee9a1-momodel/', 'DGraph', force_to_symmetric=True)
     data = data.to(device)
 
-    lr = 0.005
+    lr = 0.01
     print(f'batch_size: all data, lr: {lr}')
 
     model_params = {
         "h_c": 16,
-        "heads": 2,
-        "dropout": 0.1,
+        "heads": 4,
+        "dropout": 0,
     }
 
     model = Model(
