@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from torch_geometric.nn import GCNConv, GATConv
+from torch_geometric.nn import GCNConv
 
 
 class Model(torch.nn.Module):
