@@ -25,7 +25,7 @@ model = Model(
     batchnorm=False,
     ** model_params
 ).to(device)
-model_desc = f'MLP-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
+model_desc = f'MLP-AdjNodes_{num_nodes}-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
 model_save_path = f'results/model-{model_desc}.pt'
 model.load_state_dict(torch.load(model_save_path, map_location=device))
 

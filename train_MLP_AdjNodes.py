@@ -101,7 +101,7 @@ if __name__ == '__main__':
         batchnorm=False,
         ** model_params
     )
-    model_desc = f'MLP-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
+    model_desc = f'MLP-AdjNodes_{num_nodes}-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
 
     model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
