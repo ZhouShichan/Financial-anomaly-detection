@@ -53,15 +53,7 @@ def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, mo
     loss = train(model, data, data.train_mask, optimizer, cache_path)
     eval_results, losses = valid(model, data, split_idx, evaluator, cache_path)
     valid_loss = losses['valid']
-    train_log = {
-        'epoch': epoch,
-        'train_loss': losses['train'],
-        'train_auc': eval_results['train'],
-        'valid_loss': losses['valid'],
-        'valid_auc': eval_results['valid'],
-    }
-    with open(f'results/train_log-{model_desc}.csv', 'a' if epoch > 0 else 'w', newline='') as f:
-        pd.DataFrame({k: [v] for k, v in train_log.items()}).to_csv(f, header=f.tell() == 0, index=False)
+
     early_stop = False
     # 保存最好的模型
     if valid_loss < min_valid_loss:
@@ -79,10 +71,18 @@ def train_epoch(model, data, optimizer, evaluator, lr, min_valid_loss, epoch, mo
         if stop_count == 10:
             early_stop = True
 
-    train_log['lr'] = lr
-    train_log['stop_count'] = stop_count
-    train_log['early_stop'] = early_stop
-    train_log['min_valid_loss'] = min_valid_loss
+    train_log = {
+        'epoch': epoch,
+        't.loss': losses['train'],
+        't.auc': eval_results['train'],
+        'v.loss': losses['valid'],
+        'v.auc': eval_results['valid'],
+        'lr': lr,
+        's.cnt': stop_count,
+        'min.v.loss': min_valid_loss,
+    }
+    with open(f'results/train_log-{model_desc}.csv', 'a' if epoch > 0 else 'w', newline='') as f:
+        pd.DataFrame({k: [v] for k, v in train_log.items()}).to_csv(f, header=f.tell() == 0, index=False)
     return min_valid_loss, lr, stop_count, early_stop, train_log
 
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     data = load_data('./datasets/632d74d4e2843a53167ee9a1-momodel/', 'DGraph', force_to_symmetric=True)
     data = data.to(device)
 
-    lr = 0.001
+    lr = 0.005
     print(f'batch_size: all data, lr: {lr}')
 
     model_params = {
