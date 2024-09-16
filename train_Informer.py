@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from models.MLP import Model
+from models.Informer import Model
 from utils.dgraphfin import load_data, AdjacentNodesDataset
 from utils.evaluator import Evaluator
 
