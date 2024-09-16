@@ -64,6 +64,9 @@ def train_epoch(
         model_save_path = Path(f'results/model-{model_desc}.pt')
         model_save_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), model_save_path)
+        if cache_path.exists():
+            out = torch.load(cache_path)
+            torch.save(out, cache_path.with_name(f'out-best-{model_desc}.pt'))
         min_valid_loss = valid_loss
     else:
         stop_count += 1

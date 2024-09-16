@@ -36,7 +36,7 @@ model_desc = f'GCN-{"-".join([f"{k}_{v}" for k, v in model_params.items() ])}'
 model_save_path = f'results/model-{model_desc}.pt'
 model.load_state_dict(torch.load(model_save_path, map_location=device))
 
-cache_path = f'./results/out-{model_desc}.pt'
+cache_path = f'./results/out-best-{model_desc}.pt'
 
 
 def predict(data, node_id):
