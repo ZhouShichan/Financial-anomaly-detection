@@ -125,7 +125,7 @@ def load_data(folder, dataset_name, force_to_symmetric: bool = True):
     return data
 
 
-def get_adj_nodes(data, idx: int | Tensor, num_nodes: int):
+def get_adj_nodes(data, idx: int, num_nodes: int):
     if isinstance(idx, int):
         idx = Tensor([idx]).long()
     x: Tensor = data.x[idx]
