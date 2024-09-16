@@ -125,6 +125,34 @@ def load_data(folder, dataset_name, force_to_symmetric: bool = True):
     return data
 
 
+def get_adj_nodes(data, idx: int | Tensor, num_nodes: int):
+    if isinstance(idx, int):
+        idx = Tensor([idx]).long()
+    x: Tensor = data.x[idx]
+    y: Tensor = data.y[idx]
+
+    # 从 adj_t 中获取 idx 节点的邻居节点
+    _, neighbors, distances = data.adj_t[idx.item()].coo()  # 提取行对应的邻居节点索引
+
+    if distances is not None:
+        neighbors = {i.item(): j.item() for i, j in zip(neighbors, distances)}
+        neighbors = sorted(neighbors.items(), key=lambda x: x[1])
+        distances = Tensor([i[1] for i in neighbors])
+        neighbors = Tensor([i[0] for i in neighbors])
+    else:
+        distances = torch.ones(len(neighbors))
+    neighbors = data.x[neighbors]
+    n_neighbors = len(neighbors)
+    if len(neighbors) < num_nodes - 1:
+        n_pad = num_nodes - 1 - len(neighbors)
+        neighbors = F.pad(neighbors, (0, 0, 0, n_pad), value=0.0)
+        distances = F.pad(distances, (0, n_pad), value=0.0) if distances is not None else None
+    else:
+        neighbors = neighbors[:num_nodes - 1]
+        distances = distances[:num_nodes - 1] if distances is not None else None
+    return torch.cat([x, neighbors], dim=0), F.pad(distances, (1, 0), value=0.0), y, n_neighbors
+
+
 class AdjacentNodesDataset(Dataset):
     def __init__(self, data, indexs, num_nodes):
         super(AdjacentNodesDataset, self).__init__()
@@ -136,30 +164,8 @@ class AdjacentNodesDataset(Dataset):
         return len(self.indexs)
 
     def __getitem__(self, idx):
-        index: Tensor = self.indexs[idx]
-        x: Tensor = self.data.x[index].unsqueeze(0)
-        y: Tensor = self.data.y[index]
-
-        # 从 adj_t 中获取 idx 节点的邻居节点
-        _, neighbors, distances = self.data.adj_t[index.item()].coo()  # 提取行对应的邻居节点索引
-
-        if distances is not None:
-            neighbors = {i.item(): j.item() for i, j in zip(neighbors, distances)}
-            neighbors = sorted(neighbors.items(), key=lambda x: x[1])
-            distances = Tensor([i[1] for i in neighbors])
-            neighbors = Tensor([i[0] for i in neighbors])
-        else:
-            distances = torch.ones(len(neighbors))
-        neighbors = self.data.x[neighbors]
-        n_neighbors = len(neighbors)
-        if len(neighbors) < self.num_nodes - 1:
-            n_pad = self.num_nodes - 1 - len(neighbors)
-            neighbors = F.pad(neighbors, (0, 0, 0, n_pad), value=0.0)
-            distances = F.pad(distances, (0, n_pad), value=0.0) if distances is not None else None
-        else:
-            neighbors = neighbors[:self.num_nodes - 1]
-            distances = distances[:self.num_nodes - 1] if distances is not None else None
-        return torch.cat([x, neighbors], dim=0), F.pad(distances, (1, 0), value=0.0), y, n_neighbors
+        idx: Tensor = self.indexs[idx]
+        return get_adj_nodes(self.data, idx, self.num_nodes)
 
     @staticmethod
     def collate_fn(batch):
